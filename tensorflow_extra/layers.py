@@ -81,13 +81,14 @@ class MelSpectrogram(tf.keras.layers.Layer):
 
     def spectrogram(self, input):
         spec = tf.signal.stft(
-            input,
+            tf.cast(input, tf.float32),
             frame_length=self.win_length,
             frame_step=self.hop_length,
             fft_length=self.n_fft,
             window_fn=getattr(tf.signal, self.window),
             pad_end=True,
         )
+        spec = tf.cast(spec, input.dtype)
         spec = tf.math.pow(tf.math.abs(spec), self.power)
         return spec
 
@@ -100,11 +101,12 @@ class MelSpectrogram(tf.keras.layers.Layer):
             lower_edge_hertz=self.fmin,
             upper_edge_hertz=self.fmax,
         )
+        matrix = tf.cast(matrix, input.dtype)
         return tf.tensordot(input, matrix, axes=1)
 
     def dbscale(self, input):
         log_spec = 10.0 * (
-            tf.math.log(tf.math.maximum(input, self.amin)) / tf.math.log(10.0)
+            tf.math.log(tf.math.maximum(tf.cast(input, tf.float32), self.amin)) / tf.math.log(10.0)
         )
         if callable(self.ref):
             ref_value = self.ref(log_spec)
@@ -116,6 +118,7 @@ class MelSpectrogram(tf.keras.layers.Layer):
             / tf.math.log(10.0)
         )
         log_spec = tf.math.maximum(log_spec, tf.math.reduce_max(log_spec) - self.top_db)
+        log_spec = tf.cast(log_spec, input.dtype)
         return log_spec
 
     def update_channels(self, input):
